@@ -1,0 +1,13 @@
+{
+  "name": "arcohn-dashboard",
+  "version": "1.0.0",
+  "description": "Panel de transacciones financieras para Andamios ARCOHN",
+  "main": "index.html",
+  "scripts": {
+    "dev": "http-server -p 3000",
+    "build": "echo 'Production build'"
+  },
+  "keywords": ["arcohn", "andamios", "dashboard", "transacciones"],
+  "author": "Gabu",
+  "license": "MIT"
+}

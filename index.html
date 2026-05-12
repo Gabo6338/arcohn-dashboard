@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Andamios ARCOHN - Panel de Transacciones</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #0F47AF 0%, #082B74 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(15, 71, 175, 0.15);
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .login-overlay {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+        }
+        .login-card h2 {
+            color: #0F47AF;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .login-card input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .login-card input:focus {
+            outline: none;
+            border-color: #0F47AF;
+            box-shadow: 0 0 0 3px rgba(15, 71, 175, 0.1);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #FF4500 0%, #E23201 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+        }
+        .login-btn:active {
+            transform: translateY(0);
+        }
+        .error-msg {
+            color: #E23201;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .control-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #0F47AF;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .control-group select,
+        .control-group input {
+            padding: 10px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+        .control-group select:focus,
+        .control-group input:focus {
+            outline: none;
+            border-color: #0F47AF;
+            box-shadow: 0 0 0 3px rgba(15, 71, 175, 0.1);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .stat-card-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .stat-card-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0F47AF;
+        }
+        .stat-card.accent {
+            border-color: #FF4500;
+        }
+        .stat-card.accent .stat-card-value {
+            color: #FF4500;
+        }
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        @media (max-width: 900px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0F47AF;
+            margin-bottom: 15px;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .transactions-table thead {
+            background: #f0f4f9;
+            border-bottom: 2px solid #0F47AF;
+        }
+        .transactions-table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #0F47AF;
+        }
+        .transactions-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .transactions-table tr:hover {
+            background: #f9fbfc;
+        }
+        .amount {
+            font-weight: 600;
+            color: #0F47AF;
+        }
+        .amount.refund {
+            color: #E23201;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-manual {
+            background: #e8f4ff;
+            color: #0F47AF;
+        }
+        .badge-reembolso {
+            background: #ffe8e8;
+            color: #E23201;
+        }
+        .badge-transferencia {
+            background: #fff4e6;
+            color: #FF4500;
+        }
+        .note {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0F47AF 0%, #082B74 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15, 71, 175, 0.3);
+        }
+        .btn-secondary {
+            background: #f0f4f9;
+            color: #0F47AF;
+            border: 2px solid #0F47AF;
+        }
+        .btn-secondary:hover {
+            background: #e8f4ff;
+        }
+        .logout-btn {
+            background: #E23201;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .logout-btn:hover {
+            background: #c82801;
+        }
+        .header-right {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        @media print {
+            .controls, .export-buttons, .logout-btn, .header-right {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loginScreen">
+    <div class="login-overlay">
+        <div class="login-card">
+            <h2>🔐 Acceso a Reportes</h2>
+            <p style="color: #666; margin-bottom: 20px;">Ingresa la contraseña para ver los pagos</p>
+            <input type="password" id="passwordInput" placeholder="Contraseña" onkeypress="if(event.key==='Enter') login()">
+            <button class="login-btn" onclick="login()">Acceder</button>
+            <div class="error-msg" id="errorMsg"></div>
+        </div>
+    </div>
+</div>
+
+<div id="appContent" style="display: none;">
+    <div class="app-container">
+        <div class="header">
+            <div class="header-right">
+                <div>
+                    <h1>Andamios ARCOHN</h1>
+                    <p>Panel de Transacciones Financieras</p>
+                </div>
+                <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Gráfico a mostrar</label>
+                <select id="chartType" onchange="updateChart()">
+                    <option value="method">Método de Pago</option>
+                    <option value="type">Tipo de Transacción</option>
+                    <option value="period">Período (Mes/Año)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Fecha desde</label>
+                <input type="date" id="dateFrom" onchange="filterData()">
+            </div>
+            <div class="control-group">
+                <label>Fecha hasta</label>
+                <input type="date" id="dateTo" onchange="filterData()">
+            </div>
+            <div class="control-group">
+                <label>Filtrar por tipo</label>
+                <select id="filterType" onchange="filterData()">
+                    <option value="">Todos</option>
+                    <option value="Manual">Manual</option>
+                    <option value="Reembolso">Reembolso</option>
+                    <option value="Transferencia">Transferencia</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-label">Total de Pagos</div>
+                <div class="stat-card-value" id="totalPayments">L 0.00</div>
+            </div>
+            <div class="stat-card accent">
+                <div class="stat-card-label">Total de Reembolsos</div>
+                <div class="stat-card-value" id="totalRefunds">-L 0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-label">Saldo Neto</div>
+                <div class="stat-card-value" id="totalNet">L 0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-label"># de Transacciones</div>
+                <div class="stat-card-value" id="transactionCount">0</div>
+            </div>
+        </div>
+
+        <div class="export-buttons">
+            <button class="btn btn-secondary" onclick="exportToExcel()">📊 Exportar a Excel</button>
+            <button class="btn btn-secondary" onclick="exportToPDF()">📄 Exportar a PDF</button>
+            <button class="btn btn-secondary" onclick="printPage()">🖨️ Imprimir</button>
+        </div>
+
+        <div class="content-grid">
+            <div class="card">
+                <h3>Análisis Visual</h3>
+                <div class="chart-container">
+                    <canvas id="myChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Desglose por Método</h3>
+                <div id="methodBreakdown" style="padding: 10px 0;">
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Transacciones Detalladas</h3>
+            <div class="table-responsive">
+                <table class="transactions-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const PASSWORD = "P2336grupoSTG";
+
+    const transactions = [
+        { date: "2026-05-11", amount: 1487.50, type: "Manual", method: "Depósito", note: "Pagado del depósito" },
+        { date: "2026-05-07", amount: -5283.10, type: "Reembolso", method: "Reembolso", note: "Reembolso de cruceta aplicado" },
+        { date: "2026-04-16", amount: 30193.01, type: "Manual", method: "Tarjeta Crédito", note: "" },
+        { date: "2026-02-23", amount: 7475.00, type: "Manual", method: "Tarjeta Crédito", note: "" },
+        { date: "2026-01-26", amount: 6606.24, type: "Manual", method: "Tarjeta Crédito", note: "" },
+        { date: "2026-01-06", amount: 6291.66, type: "Manual", method: "Tarjeta Crédito", note: "" },
+        { date: "2025-12-31", amount: 2202.08, type: "Manual", method: "Tarjeta Crédito", note: "" },
+        { date: "2025-12-19", amount: 2202.08, type: "Manual", method: "Tarjeta Crédito", note: "" },
+        { date: "2025-12-18", amount: -2225.00, type: "Reembolso", method: "Reembolso", note: "Reembolso solicitado por Karla Contreras" },
+        { date: "2025-12-16", amount: 4202.08, type: "Manual", method: "Tarjeta Crédito", note: "" },
+        { date: "2025-12-08", amount: 3508.10, type: "Manual", method: "Tarjeta Crédito", note: "" },
+        { date: "2025-11-28", amount: 3595.50, type: "Manual", method: "Tarjeta Crédito", note: "" },
+        { date: "2025-10-01", amount: 4770.50, type: "Manual", method: "Transferencia", note: "Pagada por transferencia" }
+    ];
+
+    let filteredTransactions = [...transactions];
+    let chart = null;
+
+    function login() {
+        const password = document.getElementById("passwordInput").value;
+        const errorMsg = document.getElementById("errorMsg");
+        
+        if (password === PASSWORD) {
+            document.getElementById("loginScreen").style.display = "none";
+            document.getElementById("appContent").style.display = "block";
+            initializeApp();
+        } else {
+            errorMsg.textContent = "Contraseña incorrecta";
+            document.getElementById("passwordInput").value = "";
+        }
+    }
+
+    function logout() {
+        if (confirm("¿Deseas cerrar sesión?")) {
+            document.getElementById("appContent").style.display = "none";
+            document.getElementById("loginScreen").style.display = "flex";
+            document.getElementById("passwordInput").value = "";
+        }
+    }
+
+    function initializeApp() {
+        filterData();
+        setDefaultDates();
+    }
+
+    function setDefaultDates() {
+        const today = new Date();
+        const oneYearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+        
+        document.getElementById("dateFrom").valueAsDate = oneYearAgo;
+        document.getElementById("dateTo").valueAsDate = today;
+    }
+
+    function filterData() {
+        const dateFrom = document.getElementById("dateFrom").value;
+        const dateTo = document.getElementById("dateTo").value;
+        const filterType = document.getElementById("filterType").value;
+        
+        filteredTransactions = transactions.filter(t => {
+            const tDate = new Date(t.date);
+            const fromDate = dateFrom ? new Date(dateFrom) : new Date("2020-01-01");
+            const toDate = dateTo ? new Date(dateTo) : new Date("2030-12-31");
+            
+            const dateMatch = tDate >= fromDate && tDate <= toDate;
+            const typeMatch = !filterType || t.type === filterType;
+            
+            return dateMatch && typeMatch;
+        });
+        
+        updateStats();
+        updateChart();
+        updateTable();
+        updateMethodBreakdown();
+    }
+
+    function updateStats() {
+        const payments = filteredTransactions.filter(t => t.amount > 0).reduce((a, b) => a + b.amount, 0);
+        const refunds = Math.abs(filteredTransactions.filter(t => t.amount < 0).reduce((a, b) => a + b.amount, 0));
+        const net = payments - refunds;
+        
+        document.getElementById("totalPayments").textContent = `L ${payments.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+        document.getElementById("totalRefunds").textContent = `-L ${refunds.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+        document.getElementById("totalNet").textContent = `L ${net.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+        document.getElementById("transactionCount").textContent = filteredTransactions.length;
+    }
+
+    function updateChart() {
+        const chartType = document.getElementById("chartType").value;
+        const ctx = document.getElementById("myChart").getContext("2d");
+        
+        let labels, data, colors;
+        
+        if (chartType === "method") {
+            const grouped = {};
+            filteredTransactions.forEach(t => {
+                grouped[t.method] = (grouped[t.method] || 0) + Math.abs(t.amount);
+            });
+            labels = Object.keys(grouped);
+            data = Object.values(grouped);
+            colors = ["#0F47AF", "#FF4500", "#FFD700"];
+        } else if (chartType === "type") {
+            const payments = Math.abs(filteredTransactions.filter(t => t.amount > 0).reduce((a, b) => a + b.amount, 0));
+            const refunds = Math.abs(filteredTransactions.filter(t => t.amount < 0).reduce((a, b) => a + b.amount, 0));
+            labels = ["Pagos", "Reembolsos"];
+            data = [payments, refunds];
+            colors = ["#0F47AF", "#E23201"];
+        } else {
+            const grouped = {};
+            filteredTransactions.forEach(t => {
+                const monthKey = t.date.substring(0, 7);
+                grouped[monthKey] = (grouped[monthKey] || 0) + Math.abs(t.amount);
+            });
+            labels = Object.keys(grouped).sort().map(m => {
+                const [year, month] = m.split("-");
+                return new Date(year, parseInt(month) - 1).toLocaleDateString("es-ES", { month: "short", year: "numeric" });
+            });
+            data = Object.values(grouped);
+            colors = ["#0F47AF", "#FF4500", "#FFD700", "#E23201", "#082B74"];
+        }
+        
+        if (chart) chart.destroy();
+        
+        chart = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+                labels,
+                datasets: [{
+                    data,
+                    backgroundColor: colors.slice(0, data.length),
+                    borderColor: "#fff",
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    }
+                }
+            }
+        });
+    }
+
+    function updateTable() {
+        const tbody = document.getElementById("transactionsBody");
+        tbody.innerHTML = filteredTransactions
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .map(t => `
+                <tr>
+                    <td>${new Date(t.date).toLocaleDateString("es-ES")}</td>
+                    <td><span class="badge badge-${t.type.toLowerCase()}">${t.type}</span></td>
+                    <td class="amount ${t.amount < 0 ? 'refund' : ''}">${t.amount < 0 ? '-' : ''}L ${Math.abs(t.amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</td>
+                    <td>${t.method}</td>
+                    <td class="note">${t.note}</td>
+                </tr>
+            `)
+            .join("");
+    }
+
+    function updateMethodBreakdown() {
+        const grouped = {};
+        filteredTransactions.forEach(t => {
+            if (!grouped[t.method]) grouped[t.method] = 0;
+            grouped[t.method] += Math.abs(t.amount);
+        });
+        
+        const div = document.getElementById("methodBreakdown");
+        div.innerHTML = Object.entries(grouped)
+            .map(([method, amount]) => `
+                <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+                    <span style="color: #666;">${method}</span>
+                    <span style="font-weight: 600; color: #0F47AF;">L ${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</span>
+                </div>
+            `)
+            .join("");
+    }
+
+    function exportToExcel() {
+        const ws = XLSX.utils.json_to_sheet(
+            filteredTransactions.map(t => ({
+                Fecha: new Date(t.date).toLocaleDateString("es-ES"),
+                Tipo: t.type,
+                Monto: Math.abs(t.amount),
+                Método: t.method,
+                Notas: t.note
+            }))
+        );
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Transacciones");
+        XLSX.writeFile(wb, "Transacciones_ARCOHN.xlsx");
+    }
+
+    function exportToPDF() {
+        const element = document.querySelector(".card:last-child");
+        const opt = {
+            margin: 10,
+            filename: "Transacciones_ARCOHN.pdf",
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { orientation: "landscape", unit: "mm", format: "a4" }
+        };
+        html2pdf().set(opt).from(element).save();
+    }
+
+    function printPage() {
+        window.print();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        document.getElementById("passwordInput").focus();
+    });
+</script>
+
+</body>
+</html>
